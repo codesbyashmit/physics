@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Newton's Rings Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-8 font-sans">
+
+    <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-8">
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <i data-lucide="circle" class="w-10 h-10 text-purple-400"></i>
+                <h1 class="text-4xl font-bold text-white">Newton's Rings</h1>
+            </div>
+            <p class="text-gray-300 text-lg">Circular Interference Pattern Simulator</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-gray-800 rounded-xl p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+                        <span class="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></span>
+                        Interference Pattern
+                    </h2>
+                    <div class="flex gap-2">
+                        <button onclick="setViewMode('color')" id="btn-color" class="px-4 py-2 rounded-lg font-medium transition-all bg-purple-600 text-white">
+                            Color
+                        </button>
+                        <button onclick="setViewMode('mono')" id="btn-mono" class="px-4 py-2 rounded-lg font-medium transition-all bg-gray-700 text-gray-300 hover:bg-gray-600">
+                            Monochrome
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-black rounded-lg p-4 flex items-center justify-center">
+                    <canvas id="simCanvas" width="500" height="500" class="rounded"></canvas>
+                </div>
+                <p class="text-gray-400 text-sm text-center mt-2">
+                    Red dot marks the point of contact (center)
+                </p>
+                
+                <div class="mt-4 p-4 bg-gray-700 rounded-lg">
+                    <h3 class="text-white font-semibold mb-3">Dark Ring Radii:</h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm text-purple-300 font-mono" id="calc-display">
+                        </div>
+                    <p class="text-gray-400 text-xs mt-2">Formula: rₙ = √(nλR)</p>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl p-6 shadow-2xl">
+                <h2 class="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-5 h-5 text-purple-400"></i>
+                    Parameters
+                </h2>
+
+                <div class="mb-6">
+                    <label class="block text-white font-medium mb-2">
+                        Wavelength (λ): <span id="val-wavelength">589</span> nm
+                    </label>
+                    <input type="range" id="input-wavelength" min="400" max="700" value="589" 
+                           class="w-full h-2 bg-gray-600 rounded-lg cursor-pointer accent-purple-500">
+                    <div class="flex justify-between text-xs text-gray-400 mt-1">
+                        <span>Violet (400nm)</span>
+                        <span>Red (700nm)</span>
+                    </div>
+                    <div class="mt-2 p-2 bg-gray-700 rounded text-xs text-gray-300">
+                        Common: Sodium D-line = 589 nm
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-white font-medium mb-2">
+                        Radius of Curvature (R): <span id="val-radius">100</span> cm
+                    </label>
+                    <input type="range" id="input-radius" min="50" max="200" step="10" value="100" 
+                           class="w-full h-2 bg-gray-600 rounded-lg cursor-pointer accent-purple-500">
+                    <div class="flex justify-between text-xs text-gray-400 mt-1">
+                        <span>50 cm</span>
+                        <span>200 cm</span>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-gray-700 rounded-lg mb-4">
+                    <h3 class="text-white font-semibold mb-3">Key Concepts:</h3>
+                    <ul class="text-gray-300 text-sm space-y-2">
+                        <li>• Center is dark (destructive)</li>
+                        <li>• Rings get closer with distance</li>
+                        <li>• Dark ring: 2t = nλ</li>
+                    </ul>
+                </div>
+                
+                <div class="p-4 bg-purple-900 bg-opacity-30 rounded-lg border border-purple-500">
+                    <p class="text-purple-200 text-sm">
+                        <strong> Concept :</strong> Larger radius = more rings. Shorter wavelength = more rings in same area!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center text-gray-400 text-sm">
+            <p>Newton's Rings - Made By Ashmit Kumar</p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // State Variables
+        let state = {
+            wavelength: 589,
+            radius: 100,
+            viewMode: 'color'
+        };
+
+        // DOM Elements
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const wavelengthInput = document.getElementById('input-wavelength');
+        const radiusInput = document.getElementById('input-radius');
+        const wavelengthDisplay = document.getElementById('val-wavelength');
+        const radiusDisplay = document.getElementById('val-radius');
+        const calcDisplay = document.getElementById('calc-display');
+        const btnColor = document.getElementById('btn-color');
+        const btnMono = document.getElementById('btn-mono');
+
+        // Helper: Wavelength to RGB
+        function wavelengthToRGB(wavelength) {
+            let r, g, b;
+            if (wavelength >= 380 && wavelength < 440) { r = -(wavelength - 440) / (440 - 380); g = 0; b = 1; }
+            else if (wavelength >= 440 && wavelength < 490) { r = 0; g = (wavelength - 440) / (490 - 440); b = 1; }
+            else if (wavelength >= 490 && wavelength < 510) { r = 0; g = 1; b = -(wavelength - 510) / (510 - 490); }
+            else if (wavelength >= 510 && wavelength < 580) { r = (wavelength - 510) / (580 - 510); g = 1; b = 0; }
+            else if (wavelength >= 580 && wavelength < 645) { r = 1; g = -(wavelength - 645) / (645 - 580); b = 0; }
+            else if (wavelength >= 645 && wavelength <= 780) { r = 1; g = 0; b = 0; }
+            else { r = 1; g = 1; b = 1; }
+            return { r: r * 255, g: g * 255, b: b * 255 };
+        }
+
+        // Helper: Calculate Ring Radius
+        function calculateRingRadius(n) {
+            const lambda = state.wavelength * 1e-9;
+            const R = state.radius * 1e-2;
+            const r = Math.sqrt(n * lambda * R) * 1000; // Convert to mm
+            return r.toFixed(3);
+        }
+
+        // Main Draw Function
+        function draw() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            // Clear Canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            const lambda = state.wavelength * 1e-9;
+            const R = state.radius * 1e-2;
+            const maxRadius = Math.min(width, height) / 2;
+
+            // We iterate pixel by pixel (simplified loop)
+            // Note: For better performance in JS, we could use ImageData, 
+            // but fillRect is easier to read for learning.
+            for (let x = 0; x < width; x+=2) { // optimization: skip every 2nd pixel
+                for (let y = 0; y < height; y+=2) {
+                    const dx = x - centerX;
+                    const dy = y - centerY;
+                    const r = Math.sqrt(dx * dx + dy * dy);
+
+                    if (r < maxRadius) {
+                        const r_meters = (r / maxRadius) * 0.02; 
+                        const thickness = (r_meters * r_meters) / (2 * R);
+                        const pathDiff = 2 * thickness;
+                        const phase = (2 * Math.PI * pathDiff) / lambda + Math.PI;
+                        const intensity = Math.pow(Math.cos(phase / 2), 2);
+
+                        if (state.viewMode === 'color') {
+                            const c = wavelengthToRGB(state.wavelength);
+                            const r_val = Math.floor(c.r * intensity);
+                            const g_val = Math.floor(c.g * intensity);
+                            const b_val = Math.floor(c.b * intensity);
+                            ctx.fillStyle = `rgb(${r_val}, ${g_val}, ${b_val})`;
+                        } else {
+                            const gray = Math.floor(255 * intensity);
+                            ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+                        }
+                        ctx.fillRect(x, y, 2, 2); // drawing 2x2 blocks for speed
+                    }
+                }
+            }
+
+            // Draw center dot
+            ctx.strokeStyle = '#ff000080';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            // Update Text UI
+            updateUI();
+        }
+
+        function updateUI() {
+            wavelengthDisplay.innerText = state.wavelength;
+            radiusDisplay.innerText = state.radius;
+            
+            // Update Calculation Text
+            let html = '';
+            for(let i=1; i<=6; i++) {
+                html += `<p>r${i} (${i}${getOrdinal(i)} dark) = ${calculateRingRadius(i)} mm</p>`;
+            }
+            calcDisplay.innerHTML = html;
+
+            // Update Buttons
+            if(state.viewMode === 'color') {
+                btnColor.className = "px-4 py-2 rounded-lg font-medium transition-all bg-purple-600 text-white";
+                btnMono.className = "px-4 py-2 rounded-lg font-medium transition-all bg-gray-700 text-gray-300 hover:bg-gray-600";
+            } else {
+                btnColor.className = "px-4 py-2 rounded-lg font-medium transition-all bg-gray-700 text-gray-300 hover:bg-gray-600";
+                btnMono.className = "px-4 py-2 rounded-lg font-medium transition-all bg-purple-600 text-white";
+            }
+        }
+
+        function getOrdinal(n) {
+            if(n==1) return 'st';
+            if(n==2) return 'nd';
+            if(n==3) return 'rd';
+            return 'th';
+        }
+
+        function setViewMode(mode) {
+            state.viewMode = mode;
+            draw();
+        }
+
+        // Event Listeners
+        wavelengthInput.addEventListener('input', (e) => {
+            state.wavelength = parseInt(e.target.value);
+            draw();
+        });
+
+        radiusInput.addEventListener('input', (e) => {
+            state.radius = parseInt(e.target.value);
+            draw();
+        });
+
+        // Initial Draw
+        draw();
+
+    </script>
+</body>
+</html>
